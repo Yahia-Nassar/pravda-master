@@ -1,0 +1,83 @@
+@page "/topnews"
+@inject HttpClient Http
+@using Microsoft.Extensions.Configuration
+@inject IConfiguration Configuration
+@inject NavigationManager NavigationManager
+@inject Blazored.LocalStorage.ILocalStorageService localStorage
+
+<div class="topnews">
+    @if (Classifieds == null)
+    {
+    <div class="spinner-border text-primary" style="color: #5469d4" role="status">
+        <span class="sr-only">Loading...</span>
+    </div>
+    }
+    else
+    {
+        <div class="header-wrapper">
+            <h3>Top @Classifieds.Count() news searched.</h3>
+        </div>
+        @foreach (Classified classified in Classifieds)
+        {
+            @if (@classified.isClassifiedFake)
+            {
+                BackgroundColor = "rgba(255, 0, 0, 0.1)";
+            }
+            else
+            {
+                BackgroundColor = "rgba(0, 255, 0, 0.1)";
+            }
+
+            <div class="topnews__card" style="background-color: @BackgroundColor;border-radius:0 0 12px 12px!important;">
+                <h5>@classified.Title</h5>
+                <div class="subject-date">
+                    <p class="subject">@classified.Subject</p>
+                    <p class="date">@GetTimeSinceDate(DateTime.Parse(classified.Date))</p>
+                </div>
+                <p>@classified.Text</p>
+            </div>
+        }
+    }
+</div>
+
+@code {
+
+    public List<Classified> Classifieds = null;
+    
+    public string BackgroundColor { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        var LoggedIn = await localStorage.ContainKeyAsync("token");
+        if (!LoggedIn)
+        {
+            NavigationManager.NavigateTo("/login");
+        } 
+        else
+        {
+            var res = await Http.GetFromJsonAsync<List<Classified>>($"{@Configuration["NewsStorage"]}/hotnews/pravda");
+            Classifieds = res;
+        }
+    }
+
+    private string GetTimeSinceDate(DateTime date)
+    {
+        var difference = DateTime.Now.Subtract(date);
+        if(difference.TotalHours > 24)
+        {
+            if(difference.TotalDays == 1) {
+                return $"{(int)difference.TotalDays} day ago";
+            }
+            return $"{(int)difference.TotalDays} days ago";
+        }
+
+        if(difference.TotalHours >= 1 && difference.TotalHours <= 24)
+        {
+            return $"{(int)difference.TotalHours} hours ago";
+        }
+
+        return $"{(int)difference.TotalMinutes} minutes ago";
+    }
+
+
+}
